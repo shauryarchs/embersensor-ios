@@ -1,9 +1,11 @@
 import SwiftUI
+import Combine
 
 struct ContentView: View {
     
     @State private var status: FireStatus?
     let api = APIService()
+    let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
     
     var body: some View {
         ScrollView {
@@ -21,10 +23,22 @@ struct ContentView: View {
                             .font(.system(size: 40))
                             .foregroundColor(s.fireDetected ? .red : .green)
                         
-                        Text(s.fireDetected ? "HIGH RISK" : "SAFE")
-                            .font(.title2)
-                            .bold()
-                            .foregroundColor(s.fireDetected ? .red : .green)
+                        let risk = getRiskLevel(s)
+
+                        VStack(spacing: 10) {
+                            Image(systemName: risk.label == "HIGH RISK" ? "flame.fill" : "shield.fill")
+                                .font(.system(size: 40))
+                                .foregroundColor(risk.color)
+                            
+                            Text(risk.label)
+                                .font(.title2)
+                                .bold()
+                                .foregroundColor(risk.color)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(risk.color.opacity(0.1))
+                        .cornerRadius(15)
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
@@ -67,10 +81,26 @@ struct ContentView: View {
                         .cornerRadius(12)
                 }
                 
+                Button(action: nestCamLiveView) {
+                    HStack {
+                        Image(systemName: "video.fill")
+                        Text("Live Video Feed")
+                            .bold()
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.black)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                }
+                
             }
             .padding()
         }
         .onAppear {
+            loadData()
+        }
+        .onReceive(timer) { _ in
             loadData()
         }
     }
@@ -78,6 +108,32 @@ struct ContentView: View {
     func loadData() {
         api.fetchStatus { result in
             self.status = result
+        }
+    }
+    
+    func nestCamLiveView() {
+        if let url = URL(string: "https://home.google.com/u/3/home/1-bf274c04573901a825c98b061c3ab65d5bf7bb682aa8583ef8dab5b2fba6e91e/cameras/list/1-b7e2e9be7aa8379b4748be3aa058f4e7ac375bc0774265209cfb961a3b8859d4?fap=true") {
+            UIApplication.shared.open(url)
+        }
+    }
+    
+    func getRiskLevel(_ s: FireStatus) -> (label: String, color: Color) {
+        
+        // Simple, explainable logic (great for judges)
+        var score = 0
+        
+        if s.fireDetected { score += 3 }
+        if s.smoke > 300 { score += 1 }
+        if s.temperature > 90 { score += 1 }
+        if s.humidity < 25 { score += 1 }
+        if s.wind > 5 { score += 1 }
+        
+        if score >= 4 {
+            return ("HIGH RISK", .red)
+        } else if score >= 2 {
+            return ("MEDIUM RISK", .yellow)
+        } else {
+            return ("LOW RISK", .green)
         }
     }
 }
