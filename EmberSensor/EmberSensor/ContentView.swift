@@ -23,9 +23,9 @@ struct ContentView: View {
                     
                     if let s = status {
                         
-                        // MARK: - Risk Level Card
-                        let risk = getRiskLevel(s)
+                        let risk = getRiskLevel(from: s.riskIndex)
                         
+                        // MARK: - Risk Card
                         VStack(spacing: 10) {
                             Image(systemName: risk.label == "HIGH RISK" ? "flame.fill" : "shield.fill")
                                 .font(.system(size: 40))
@@ -35,34 +35,60 @@ struct ContentView: View {
                                 .font(.title2)
                                 .bold()
                                 .foregroundColor(risk.color)
+                            
+                            Text("Risk Index: \(s.riskIndex)/10")
+                                .font(.headline)
+                                .foregroundColor(.primary)
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(risk.color.opacity(0.1))
+                        .background(risk.color.opacity(0.12))
                         .cornerRadius(15)
+                        
+                        // MARK: - Temperature Card
+                        VStack(spacing: 12) {
+                            dataRow(icon: "cloud.sun.fill",
+                                    label: "Weather Temp",
+                                    value: "\(String(format: "%.1f", s.weatherTemperature)) °F")
+                            
+                            dataRow(icon: "thermometer",
+                                    label: "Sensor Temp",
+                                    value: "\(String(format: "%.1f", s.sensorTemperature)) °F")
+                            
+                            dataRow(icon: "thermometer.medium",
+                                    label: "Temp Delta",
+                                    value: "\(String(format: "%.1f", s.sensorTemperature - s.weatherTemperature)) °F")
+                        }
+                        .cardStyle()
                         
                         // MARK: - Sensor Data Card
                         VStack(spacing: 12) {
-                            dataRow(icon: "thermometer", label: "Temperature",
-                                    value: "\(String(format: "%.1f", s.temperature)) °F")
-                            
-                            dataRow(icon: "smoke.fill", label: "Smoke",
+                            dataRow(icon: "smoke.fill",
+                                    label: "Smoke",
                                     value: "\(String(format: "%.0f", s.smoke)) ppm")
                             
-                            dataRow(icon: "flame", label: "Flame",
-                                    value: "\(s.flame)")
+                            dataRow(icon: "flame",
+                                    label: "Flame Sensor",
+                                    value: s.flame == 0 ? "Flame Detected" : "No Flame")
                         }
                         .cardStyle()
                         
                         // MARK: - Weather Data Card
                         VStack(spacing: 12) {
-                            dataRow(icon: "drop.fill", label: "Humidity",
-                                    value: "\(s.humidity)%")
+                            dataRow(icon: "drop.fill",
+                                    label: "Humidity",
+                                    value: "\(String(format: "%.0f", s.humidity))%")
                             
-                            dataRow(icon: "wind", label: "Wind",
+                            dataRow(icon: "wind",
+                                    label: "Wind Speed",
                                     value: "\(String(format: "%.1f", s.wind)) m/s")
                             
-                            dataRow(icon: "cloud.fill", label: "Condition",
+                            dataRow(icon: "location.north.line.fill",
+                                    label: "Wind Direction",
+                                    value: "\(String(format: "%.0f", s.windDirection))°")
+                            
+                            dataRow(icon: "cloud.fill",
+                                    label: "Condition",
                                     value: s.condition)
                             
                             dataRow(icon: s.raining ? "cloud.rain.fill" : "sun.max.fill",
@@ -71,11 +97,29 @@ struct ContentView: View {
                         }
                         .cardStyle()
                         
+                        // MARK: - FIRMS / Fire Intelligence Card
+                        VStack(spacing: 12) {
+                            dataRow(icon: "flame.circle.fill",
+                                    label: "Fire Nearby",
+                                    value: s.fireNearby ? "Yes" : "No")
+                            
+                            dataRow(icon: "wind.circle.fill",
+                                    label: "Wind Toward Home",
+                                    value: s.windTowardsHome ? "Yes" : "No")
+                            
+                            dataRow(icon: "number.circle.fill",
+                                    label: "Nearby Fire Count",
+                                    value: "\(s.nearbyCount)")
+                            
+                            dataRow(icon: "ruler",
+                                    label: "Closest Fire",
+                                    value: closestFireText(s.closestFireDistanceMiles))
+                        }
+                        .cardStyle()
+                        
                     } else {
                         ProgressView("Loading...")
                     }
-                    
-                    // MARK: - Buttons
                     
                     Button(action: loadData) {
                         Text("Refresh")
@@ -103,7 +147,6 @@ struct ContentView: View {
                 .padding()
             }
             
-            // 🔥 FULL SCREEN ALERT
             if showEmergencyAlert {
                 EmergencyAlertView(showAlert: $showEmergencyAlert)
             }
@@ -125,7 +168,7 @@ struct ContentView: View {
                 self.status = result
                 
                 if let s = result {
-                    let risk = getRiskLevel(s).label
+                    let risk = getRiskLevel(from: s.riskIndex).label
                     
                     if risk == "HIGH RISK" && lastRiskLevel != "HIGH RISK" {
                         triggerHighRiskAlert()
@@ -148,23 +191,19 @@ struct ContentView: View {
     
     // MARK: - Risk Logic
     
-    func getRiskLevel(_ s: FireStatus) -> (label: String, color: Color) {
-        
-        var score = 0
-        
-        if s.fireDetected { score += 3 }
-        if s.smoke > 300 { score += 1 }
-        if s.temperature > 90 { score += 1 }
-        if s.humidity < 25 { score += 1 }
-        if s.wind > 5 { score += 1 }
-        
-        if score >= 4 {
+    func getRiskLevel(from riskIndex: Int) -> (label: String, color: Color) {
+        if riskIndex >= 8 {
             return ("HIGH RISK", .red)
-        } else if score >= 2 {
-            return ("MEDIUM RISK", .yellow)
+        } else if riskIndex >= 5 {
+            return ("MEDIUM RISK", .orange)
         } else {
             return ("LOW RISK", .green)
         }
+    }
+    
+    func closestFireText(_ miles: Double?) -> String {
+        guard let miles = miles else { return "N/A" }
+        return "\(String(format: "%.1f", miles)) miles"
     }
     
     // MARK: - Notifications
@@ -176,15 +215,15 @@ struct ContentView: View {
     func triggerHighRiskAlert() {
         let content = UNMutableNotificationContent()
         content.title = "🔥 HIGH FIRE RISK"
-        content.body = "EmberSensor detected dangerous conditions. Sprinklers will activate."
+        content.body = "EmberSensor detected dangerous conditions. Sprinklers may activate."
         content.sound = .default
-
+        
         let request = UNNotificationRequest(
             identifier: UUID().uuidString,
             content: content,
             trigger: nil
         )
-
+        
         UNUserNotificationCenter.current().add(request)
     }
 }
@@ -194,7 +233,7 @@ struct ContentView: View {
 struct EmergencyAlertView: View {
     @Binding var showAlert: Bool
     @State private var isFlashing = false
-
+    
     var body: some View {
         ZStack {
             Color.red
@@ -205,20 +244,20 @@ struct EmergencyAlertView: View {
                         isFlashing.toggle()
                     }
                 }
-
+            
             VStack(spacing: 30) {
                 Text("🔥")
                     .font(.system(size: 80))
-
+                
                 Text("HIGH FIRE RISK")
                     .font(.largeTitle)
                     .bold()
                     .foregroundColor(.white)
-
+                
                 Text("Immediate action required.\nSprinklers may activate.")
                     .multilineTextAlignment(.center)
                     .foregroundColor(.white)
-
+                
                 Button(action: {
                     showAlert = false
                 }) {
