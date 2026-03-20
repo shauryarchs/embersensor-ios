@@ -121,7 +121,7 @@ struct ContentView: View {
                         ProgressView("Loading...")
                     }
                     
-                    Button(action: loadData) {
+                    Button(action: refreshLiveData) {
                         Text("Refresh")
                             .bold()
                             .frame(maxWidth: .infinity)
@@ -163,18 +163,37 @@ struct ContentView: View {
     // MARK: - API
     
     func loadData() {
-        api.fetchStatus { result in
+        api.fetchStatus(forceRefresh: false) { result in
             DispatchQueue.main.async {
                 self.status = result
-                
+
                 if let s = result {
                     let risk = getRiskLevel(from: s.riskIndex).label
-                    
+
                     if risk == "HIGH RISK" && lastRiskLevel != "HIGH RISK" {
                         triggerHighRiskAlert()
                         showEmergencyAlert = true
                     }
-                    
+
+                    lastRiskLevel = risk
+                }
+            }
+        }
+    }
+
+    func refreshLiveData() {
+        api.fetchStatus(forceRefresh: true) { result in
+            DispatchQueue.main.async {
+                self.status = result
+
+                if let s = result {
+                    let risk = getRiskLevel(from: s.riskIndex).label
+
+                    if risk == "HIGH RISK" && lastRiskLevel != "HIGH RISK" {
+                        triggerHighRiskAlert()
+                        showEmergencyAlert = true
+                    }
+
                     lastRiskLevel = risk
                 }
             }
