@@ -2,7 +2,6 @@ import Foundation
 import CoreLocation
 
 struct FirePoint: Codable, Identifiable, Sendable {
-    let id = UUID()
     let latitude: Double
     let longitude: Double
     let brightness: Double?
@@ -10,6 +9,10 @@ struct FirePoint: Codable, Identifiable, Sendable {
     let satellite: String?
     let acquiredDate: String?
     let acquiredTime: String?
+
+    var id: String {
+        "\(latitude)-\(longitude)-\(acquiredDate ?? "")-\(acquiredTime ?? "")"
+    }
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)

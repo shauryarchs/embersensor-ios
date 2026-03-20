@@ -5,6 +5,8 @@ struct FireMapView: View {
     let api: APIService
 
     @State private var fires: [FirePoint] = []
+    @State private var selectedFire: FirePoint?
+
     @State private var position: MapCameraPosition = .region(
         MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 34.1, longitude: -117.6),
@@ -50,28 +52,36 @@ struct FireMapView: View {
 
                 ForEach(fires) { fire in
                     Annotation("Fire", coordinate: fire.coordinate) {
-                        VStack(spacing: 4) {
-                            Image(systemName: "flame.fill")
-                                .foregroundStyle(.white)
-                                .padding(8)
-                                .background(Color.red)
-                                .clipShape(Circle())
+                        Button {
+                            selectedFire = fire
+                        } label: {
+                            VStack(spacing: 4) {
+                                Image(systemName: selectedFire?.id == fire.id ? "flame.fill" : "flame")
+                                    .foregroundStyle(.white)
+                                    .padding(8)
+                                    .background(selectedFire?.id == fire.id ? Color.orange : Color.red)
+                                    .clipShape(Circle())
 
-                            if let confidence = fire.confidence {
-                                Text(confidence.uppercased())
-                                    .font(.caption2)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(.white.opacity(0.9))
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                if let confidence = fire.confidence {
+                                    Text(confidence.uppercased())
+                                        .font(.caption2)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(.white.opacity(0.9))
+                                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                                }
                             }
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
             .mapControls {
                 MapCompass()
                 MapScaleView()
+            }
+            .onTapGesture {
+                selectedFire = nil
             }
             .onMapCameraChange(frequency: .onEnd) { context in
                 visibleRegion = context.region
@@ -104,7 +114,20 @@ struct FireMapView: View {
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .padding()
+
+            if let fire = selectedFire {
+                VStack {
+                    Spacer()
+
+                    FireDetailCard(fire: fire) {
+                        selectedFire = nil
+                    }
+                    .padding()
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
         }
+        .animation(.easeInOut, value: selectedFire?.id)
         .onAppear {
             guard !hasLoadedInitially else { return }
             hasLoadedInitially = true
@@ -124,7 +147,7 @@ struct FireMapView: View {
         }
 
         debounceTask = task
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: task)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: task)
     }
 
     private func loadFires(forceRefresh: Bool) {
@@ -138,6 +161,11 @@ struct FireMapView: View {
                 self.fires = result
                 self.isLoading = false
                 self.lastFetchedRegion = regionToFetch
+
+                if let selected = self.selectedFire,
+                   !result.contains(where: { $0.id == selected.id }) {
+                    self.selectedFire = nil
+                }
             }
         }
     }
@@ -149,12 +177,12 @@ struct FireMapView: View {
         let lonSpanChange = abs(newRegion.span.longitudeDelta - oldRegion.span.longitudeDelta)
 
         let movedEnough =
-            latMove > oldRegion.span.latitudeDelta * 0.30 ||
-            lonMove > oldRegion.span.longitudeDelta * 0.30
+            latMove > oldRegion.span.latitudeDelta * 0.20 ||
+            lonMove > oldRegion.span.longitudeDelta * 0.20
 
         let zoomChangedEnough =
-            latSpanChange > oldRegion.span.latitudeDelta * 0.30 ||
-            lonSpanChange > oldRegion.span.longitudeDelta * 0.30
+            latSpanChange > oldRegion.span.latitudeDelta * 0.20 ||
+            lonSpanChange > oldRegion.span.longitudeDelta * 0.20
 
         return movedEnough || zoomChangedEnough
     }
