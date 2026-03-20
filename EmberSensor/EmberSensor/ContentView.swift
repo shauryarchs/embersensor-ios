@@ -228,7 +228,13 @@ struct ContentView: View {
     // MARK: - Notifications
     
     func requestNotificationPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+            if let error = error {
+                print("Notification permission error:", error)
+            } else {
+                print("Notification permission granted:", granted)
+            }
+        }
     }
     
     func triggerHighRiskAlert() {
@@ -236,14 +242,21 @@ struct ContentView: View {
         content.title = "🔥 HIGH FIRE RISK"
         content.body = "EmberSensor detected dangerous conditions. Sprinklers may activate."
         content.sound = .default
-        
+        content.badge = 1
+
         let request = UNNotificationRequest(
             identifier: UUID().uuidString,
             content: content,
             trigger: nil
         )
-        
-        UNUserNotificationCenter.current().add(request)
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Failed to schedule notification:", error)
+            } else {
+                print("Notification scheduled successfully")
+            }
+        }
     }
 }
 
