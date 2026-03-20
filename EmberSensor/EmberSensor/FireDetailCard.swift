@@ -22,6 +22,10 @@ struct FireDetailCard: View {
 
             detailRow("Latitude", String(format: "%.4f", fire.latitude))
             detailRow("Longitude", String(format: "%.4f", fire.longitude))
+            
+            if let distanceMiles = fire.distanceMiles {
+                detailRow("Distance", String(format: "%.1f miles", distanceMiles))
+            }
 
             if let confidence = fire.confidence {
                 detailRow("Confidence", confidence.uppercased())

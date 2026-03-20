@@ -62,8 +62,8 @@ struct FireMapView: View {
                                     .background(selectedFire?.id == fire.id ? Color.orange : Color.red)
                                     .clipShape(Circle())
 
-                                if let confidence = fire.confidence {
-                                    Text(confidence.uppercased())
+                                if let distanceMiles = fire.distanceMiles {
+                                    Text("\(distanceMiles, specifier: "%.1f") mi")
                                         .font(.caption2)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 2)

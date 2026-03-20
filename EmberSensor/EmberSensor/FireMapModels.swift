@@ -4,6 +4,7 @@ import CoreLocation
 struct FirePoint: Codable, Identifiable, Sendable {
     let latitude: Double
     let longitude: Double
+    let distanceMiles: Double?
     let brightness: Double?
     let confidence: String?
     let satellite: String?
@@ -21,6 +22,7 @@ struct FirePoint: Codable, Identifiable, Sendable {
     enum CodingKeys: String, CodingKey {
         case latitude
         case longitude
+        case distanceMiles
         case brightness
         case confidence
         case satellite
