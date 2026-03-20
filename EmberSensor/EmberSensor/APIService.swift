@@ -1,4 +1,5 @@
 import Foundation
+import MapKit
 
 class APIService {
     func fetchStatus(forceRefresh: Bool = false, completion: @escaping (FireStatus?) -> Void) {
@@ -30,6 +31,48 @@ class APIService {
             } catch {
                 print("Decode error:", error)
                 completion(nil)
+            }
+        }.resume()
+    }
+
+    func fetchFires(
+        region: MKCoordinateRegion,
+        forceRefresh: Bool = false,
+        completion: @escaping ([FirePoint]) -> Void
+    ) {
+        let minLat = region.center.latitude - region.span.latitudeDelta / 2
+        let maxLat = region.center.latitude + region.span.latitudeDelta / 2
+        let minLon = region.center.longitude - region.span.longitudeDelta / 2
+        let maxLon = region.center.longitude + region.span.longitudeDelta / 2
+
+        var urlString = "https://embersensor.com/api/fires?minLat=\(minLat)&maxLat=\(maxLat)&minLon=\(minLon)&maxLon=\(maxLon)"
+
+        if forceRefresh {
+            let ts = Int(Date().timeIntervalSince1970)
+            urlString += "&refreshFirms=1&t=\(ts)"
+        }
+
+        guard let url = URL(string: urlString) else {
+            completion([])
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 15
+
+        URLSession.shared.dataTask(with: request) { data, _, error in
+            guard error == nil, let data = data else {
+                completion([])
+                return
+            }
+
+            do {
+                let decoded = try JSONDecoder().decode(FiresResponse.self, from: data)
+                completion(decoded.fires)
+            } catch {
+                print("Fires decode error:", error)
+                completion([])
             }
         }.resume()
     }
