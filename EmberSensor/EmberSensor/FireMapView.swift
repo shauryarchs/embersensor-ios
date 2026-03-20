@@ -17,7 +17,14 @@ struct FireMapView: View {
         span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
     )
 
+    @State private var lastFetchedRegion = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 34.1, longitude: -117.6),
+        span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
+    )
+
+    @State private var debounceTask: DispatchWorkItem?
     @State private var isLoading = false
+    @State private var hasLoadedInitially = false
 
     private let homeCoordinate = CLLocationCoordinate2D(latitude: 34.1, longitude: -117.6)
 
@@ -68,7 +75,7 @@ struct FireMapView: View {
             }
             .onMapCameraChange(frequency: .onEnd) { context in
                 visibleRegion = context.region
-                loadFires(forceRefresh: false)
+                scheduleRegionFetchIfNeeded()
             }
             .navigationTitle("Fire Map")
             .navigationBarTitleDisplayMode(.inline)
@@ -99,18 +106,56 @@ struct FireMapView: View {
             .padding()
         }
         .onAppear {
+            guard !hasLoadedInitially else { return }
+            hasLoadedInitially = true
             loadFires(forceRefresh: true)
         }
     }
 
+    private func scheduleRegionFetchIfNeeded() {
+        guard shouldFetch(for: visibleRegion, comparedTo: lastFetchedRegion) else {
+            return
+        }
+
+        debounceTask?.cancel()
+
+        let task = DispatchWorkItem {
+            loadFires(forceRefresh: false)
+        }
+
+        debounceTask = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: task)
+    }
+
     private func loadFires(forceRefresh: Bool) {
+        debounceTask?.cancel()
         isLoading = true
 
-        api.fetchFires(region: visibleRegion, forceRefresh: forceRefresh) { result in
+        let regionToFetch = visibleRegion
+
+        api.fetchFires(region: regionToFetch, forceRefresh: forceRefresh) { result in
             DispatchQueue.main.async {
                 self.fires = result
                 self.isLoading = false
+                self.lastFetchedRegion = regionToFetch
             }
         }
+    }
+
+    private func shouldFetch(for newRegion: MKCoordinateRegion, comparedTo oldRegion: MKCoordinateRegion) -> Bool {
+        let latMove = abs(newRegion.center.latitude - oldRegion.center.latitude)
+        let lonMove = abs(newRegion.center.longitude - oldRegion.center.longitude)
+        let latSpanChange = abs(newRegion.span.latitudeDelta - oldRegion.span.latitudeDelta)
+        let lonSpanChange = abs(newRegion.span.longitudeDelta - oldRegion.span.longitudeDelta)
+
+        let movedEnough =
+            latMove > oldRegion.span.latitudeDelta * 0.30 ||
+            lonMove > oldRegion.span.longitudeDelta * 0.30
+
+        let zoomChangedEnough =
+            latSpanChange > oldRegion.span.latitudeDelta * 0.30 ||
+            lonSpanChange > oldRegion.span.longitudeDelta * 0.30
+
+        return movedEnough || zoomChangedEnough
     }
 }

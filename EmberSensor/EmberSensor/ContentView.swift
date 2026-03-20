@@ -4,24 +4,33 @@ import UserNotifications
 
 struct ContentView: View {
     @State private var status: FireStatus?
+    @State private var isLoadingStatus = false
     @State private var lastRiskLevel: String = "LOW RISK"
     @State private var showEmergencyAlert = false
+    @State private var selectedTab = 0
 
     let api = APIService()
-    let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
+    let timer = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             dashboardTab
                 .tabItem {
                     Label("Status", systemImage: "flame.fill")
                 }
+                .tag(0)
 
             NavigationStack {
                 FireMapView(api: api)
             }
             .tabItem {
                 Label("Map", systemImage: "map.fill")
+            }
+            .tag(1)
+        }
+        .onChange(of: selectedTab) { _, newTab in
+            if newTab == 0 {
+                loadData()
             }
         }
     }
@@ -123,8 +132,11 @@ struct ContentView: View {
                                     value: closestFireText(s.closestFireDistanceMiles))
                         }
                         .cardStyle()
-                    } else {
+                    } else if isLoadingStatus {
                         ProgressView("Loading...")
+                    } else {
+                        Text("No data available")
+                            .foregroundColor(.secondary)
                     }
 
                     Button(action: refreshLiveData) {
@@ -167,39 +179,53 @@ struct ContentView: View {
     }
 
     func loadData() {
+        isLoadingStatus = (status == nil)
+
         api.fetchStatus(forceRefresh: false) { result in
             DispatchQueue.main.async {
-                self.status = result
+                self.isLoadingStatus = false
 
-                if let s = result {
-                    let risk = getRiskLevel(from: s.riskIndex).label
-
-                    if risk == "HIGH RISK" && lastRiskLevel != "HIGH RISK" {
-                        triggerHighRiskAlert()
-                        showEmergencyAlert = true
-                    }
-
-                    lastRiskLevel = risk
+                guard let s = result else {
+                    print("Status fetch returned nil - keeping previous data")
+                    return
                 }
+
+                self.status = s
+
+                let risk = getRiskLevel(from: s.riskIndex).label
+
+                if risk == "HIGH RISK" && lastRiskLevel != "HIGH RISK" {
+                    triggerHighRiskAlert()
+                    showEmergencyAlert = true
+                }
+
+                lastRiskLevel = risk
             }
         }
     }
 
     func refreshLiveData() {
+        isLoadingStatus = (status == nil)
+
         api.fetchStatus(forceRefresh: true) { result in
             DispatchQueue.main.async {
-                self.status = result
+                self.isLoadingStatus = false
 
-                if let s = result {
-                    let risk = getRiskLevel(from: s.riskIndex).label
-
-                    if risk == "HIGH RISK" && lastRiskLevel != "HIGH RISK" {
-                        triggerHighRiskAlert()
-                        showEmergencyAlert = true
-                    }
-
-                    lastRiskLevel = risk
+                guard let s = result else {
+                    print("Forced refresh failed - keeping previous data")
+                    return
                 }
+
+                self.status = s
+
+                let risk = getRiskLevel(from: s.riskIndex).label
+
+                if risk == "HIGH RISK" && lastRiskLevel != "HIGH RISK" {
+                    triggerHighRiskAlert()
+                    showEmergencyAlert = true
+                }
+
+                lastRiskLevel = risk
             }
         }
     }
@@ -240,7 +266,6 @@ struct ContentView: View {
         content.title = "🔥 HIGH FIRE RISK"
         content.body = "EmberSensor detected dangerous conditions. Sprinklers may activate."
         content.sound = .default
-        content.badge = 1
 
         let request = UNNotificationRequest(
             identifier: UUID().uuidString,
