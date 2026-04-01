@@ -27,6 +27,16 @@ struct ContentView: View {
                 Label("Map", systemImage: "map.fill")
             }
             .tag(1)
+
+            NavigationStack {
+                LiveFeedView()
+                    .navigationTitle("Live Feed")
+                    .navigationBarTitleDisplayMode(.inline)
+            }
+            .tabItem {
+                Label("Live Feed", systemImage: "video.fill")
+            }
+            .tag(2)
         }
         .onChange(of: selectedTab) { _, newTab in
             if newTab == 0 {
@@ -149,18 +159,6 @@ struct ContentView: View {
                             .cornerRadius(12)
                     }
 
-                    Button(action: openGoogleHome) {
-                        HStack {
-                            Image(systemName: "video.fill")
-                            Text("Live Video Feed")
-                                .bold()
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.orange)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                    }
                 }
                 .padding()
             }
@@ -227,12 +225,6 @@ struct ContentView: View {
 
                 lastRiskLevel = risk
             }
-        }
-    }
-
-    func openGoogleHome() {
-        if let url = URL(string: "https://home.google.com") {
-            UIApplication.shared.open(url)
         }
     }
 
