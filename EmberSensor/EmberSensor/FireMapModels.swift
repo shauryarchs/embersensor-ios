@@ -37,3 +37,27 @@ struct FiresResponse: Codable, Sendable {
     let firmsSource: String?
     let generatedAt: String?
 }
+
+struct NIFCFire: Codable, Identifiable, Sendable {
+    let name: String
+    let latitude: Double
+    let longitude: Double
+    let distanceMiles: Double?
+    let acresBurned: Int?
+    let percentContained: Int?
+    let state: String?
+    let updated: String?
+
+    var id: String { "\(name)-\(latitude)-\(longitude)" }
+
+    var coordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+}
+
+struct NIFCResponse: Codable, Sendable {
+    let count: Int
+    let fires: [NIFCFire]
+    let source: String?
+    let generatedAt: String?
+}

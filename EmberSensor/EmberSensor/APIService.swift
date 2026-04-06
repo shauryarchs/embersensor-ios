@@ -5,6 +5,47 @@ class APIService {
     // Max retries for transient backend errors (e.g. Cloudflare 1102 Worker exceeded limits)
     private let maxRetries = 2
 
+    func fetchNIFCFires(completion: @escaping ([NIFCFire]) -> Void) {
+        fetchNIFCFiresAttempt(attempt: 0, completion: completion)
+    }
+
+    private func fetchNIFCFiresAttempt(attempt: Int, completion: @escaping ([NIFCFire]) -> Void) {
+        guard let url = URL(string: "https://embersensor.com/api/calfire-fires") else {
+            completion([])
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 15
+
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else { completion([]); return }
+
+            let shouldRetry = (error != nil) || self.isTransientError(data: data, response: response)
+            if shouldRetry && attempt < self.maxRetries {
+                let delay = pow(2.0, Double(attempt)) * 0.5
+                DispatchQueue.global().asyncAfter(deadline: .now() + delay) {
+                    self.fetchNIFCFiresAttempt(attempt: attempt + 1, completion: completion)
+                }
+                return
+            }
+
+            guard error == nil, let data = data else {
+                completion([])
+                return
+            }
+
+            do {
+                let decoded = try JSONDecoder().decode(NIFCResponse.self, from: data)
+                completion(decoded.fires)
+            } catch {
+                print("NIFC decode error:", error)
+                completion([])
+            }
+        }.resume()
+    }
+
     /// Returns true if the response indicates a transient Cloudflare/Worker error worth retrying.
     private func isTransientError(data: Data?, response: URLResponse?) -> Bool {
         if let http = response as? HTTPURLResponse {
