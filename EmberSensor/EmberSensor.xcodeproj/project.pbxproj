@@ -335,7 +335,7 @@
 				B37ED0CC2F6A63C70099C0CB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		B37ED0CD2F6A63C70099C0CB /* Build configuration list for PBXNativeTarget "EmberSensor" */ = {
 			isa = XCConfigurationList;
@@ -344,7 +344,7 @@
 				B37ED0CF2F6A63C70099C0CB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};

@@ -29,6 +29,16 @@ struct ContentView: View {
             .tag(1)
 
             NavigationStack {
+                FireGraphView()
+                    .navigationTitle("Wildfire Analysis")
+                    .navigationBarTitleDisplayMode(.inline)
+            }
+            .tabItem {
+                Label("Analysis", systemImage: "chart.dots.scatter")
+            }
+            .tag(2)
+
+            NavigationStack {
                 LiveFeedView()
                     .navigationTitle("Live Feed")
                     .navigationBarTitleDisplayMode(.inline)
@@ -36,7 +46,7 @@ struct ContentView: View {
             .tabItem {
                 Label("Live Feed", systemImage: "video.fill")
             }
-            .tag(2)
+            .tag(3)
         }
         .onChange(of: selectedTab) { _, newTab in
             if newTab == 0 {
