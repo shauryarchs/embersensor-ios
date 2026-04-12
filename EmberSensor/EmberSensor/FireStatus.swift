@@ -2,9 +2,9 @@ import Foundation
 
 nonisolated struct FireStatus: Codable, Sendable {
     let weatherTemperature: Double
-    let sensorTemperature: Double
-    let smoke: Double
-    let flame: Int
+    let sensorTemperature: Double?
+    let smoke: Double?
+    let flame: Int?
     let humidity: Double
     let wind: Double
     let windDirection: Double

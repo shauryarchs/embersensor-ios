@@ -107,20 +107,28 @@ struct ContentView: View {
                             dataRow(icon: "sun.max.fill",
                                     label: "Weather Temp",
                                     value: fmt(s.weatherTemperature, "°F"))
-                            dataRow(icon: "thermometer",
-                                    label: "Sensor Temp",
-                                    value: fmt(s.sensorTemperature, "°F"))
-                            dataRow(icon: "thermometer.variable",
-                                    label: "Temp Delta",
-                                    value: fmtDelta(s.sensorTemperature - s.weatherTemperature, "°F"))
+                            if let sensorTemp = s.sensorTemperature {
+                                dataRow(icon: "thermometer",
+                                        label: "Sensor Temp",
+                                        value: fmt(sensorTemp, "°F"))
+                                dataRow(icon: "thermometer.variable",
+                                        label: "Temp Delta",
+                                        value: fmtDelta(sensorTemp - s.weatherTemperature, "°F"))
+                            }
                         }
 
                         // Sensors
-                        sectionCard(title: nil) {
-                            dataRow(icon: "smoke.fill",
-                                    label: "Smoke",
-                                    value: "\(String(format: "%.0f", s.smoke)) ppm")
-                            flameRow(flame: s.flame)
+                        if s.smoke != nil || s.flame != nil {
+                            sectionCard(title: nil) {
+                                if let smoke = s.smoke {
+                                    dataRow(icon: "smoke.fill",
+                                            label: "Smoke",
+                                            value: "\(String(format: "%.0f", smoke)) ppm")
+                                }
+                                if let flame = s.flame {
+                                    flameRow(flame: flame)
+                                }
+                            }
                         }
 
                         // Weather
@@ -304,24 +312,27 @@ struct ContentView: View {
     }
 
     private func sensorFactors(s: FireStatus) -> [(String, String, Color)] {
-        let flamePts = s.flame == 0 ? "+8" : "0"
-        let flameColor: Color = s.flame == 0 ? .red : .secondary
+        let flame = s.flame ?? 1
+        let flamePts = flame == 0 ? "+8" : "0"
+        let flameColor: Color = flame == 0 ? .red : .secondary
 
+        let smoke = s.smoke ?? 0
         let smokePts: String
         let smokeColor: Color
-        if s.smoke > 600 { smokePts = "+8"; smokeColor = .red }
-        else if s.smoke > 500 { smokePts = "+3"; smokeColor = .red }
-        else if s.smoke >= 400 { smokePts = "+2"; smokeColor = .orange }
-        else if s.smoke >= 300 { smokePts = "+1"; smokeColor = .orange }
+        if smoke > 600 { smokePts = "+8"; smokeColor = .red }
+        else if smoke > 500 { smokePts = "+3"; smokeColor = .red }
+        else if smoke >= 400 { smokePts = "+2"; smokeColor = .orange }
+        else if smoke >= 300 { smokePts = "+1"; smokeColor = .orange }
         else { smokePts = "0"; smokeColor = .secondary }
 
+        let sensorTemp = s.sensorTemperature ?? s.weatherTemperature
         let tempPts: String
         let tempColor: Color
-        if s.sensorTemperature > 120 { tempPts = "+8"; tempColor = .red }
-        else if s.sensorTemperature > 90 { tempPts = "+2"; tempColor = .orange }
+        if sensorTemp > 120 { tempPts = "+8"; tempColor = .red }
+        else if sensorTemp > 90 { tempPts = "+2"; tempColor = .orange }
         else { tempPts = "0"; tempColor = .secondary }
 
-        let delta = s.sensorTemperature - s.weatherTemperature
+        let delta = sensorTemp - s.weatherTemperature
         let deltaPts: String
         let deltaColor: Color
         if delta > 30 { deltaPts = "+2"; deltaColor = .red }
@@ -330,8 +341,8 @@ struct ContentView: View {
 
         return [
             ("Flame detected", flamePts, flameColor),
-            ("Smoke (\(String(format: "%.0f", s.smoke)) ppm)", smokePts, smokeColor),
-            ("Sensor temp (\(String(format: "%.0f", s.sensorTemperature))°F)", tempPts, tempColor),
+            ("Smoke (\(String(format: "%.0f", smoke)) ppm)", smokePts, smokeColor),
+            ("Sensor temp (\(String(format: "%.0f", sensorTemp))°F)", tempPts, tempColor),
             ("Temp delta (\(String(format: "%.0f", delta))°F)", deltaPts, deltaColor)
         ]
     }
