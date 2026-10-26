@@ -48,6 +48,16 @@ struct ContentView: View {
                 Label("Live Feed", systemImage: "video.fill")
             }
             .tag(3)
+
+            NavigationStack {
+                AutoSuppressionView()
+                    .navigationTitle("Auto Fire Suppression")
+                    .navigationBarTitleDisplayMode(.inline)
+            }
+            .tabItem {
+                Label("Suppression", systemImage: "sprinkler.and.droplets.fill")
+            }
+            .tag(4)
         }
         .onChange(of: selectedTab) { _, newTab in
             if newTab == 0 {
