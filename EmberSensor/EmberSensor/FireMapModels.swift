@@ -1,7 +1,7 @@
 import Foundation
 import CoreLocation
 
-struct FirePoint: Codable, Identifiable, Sendable {
+nonisolated struct FirePoint: Codable, Identifiable, Sendable {
     let latitude: Double
     let longitude: Double
     let distanceMiles: Double?
@@ -31,14 +31,14 @@ struct FirePoint: Codable, Identifiable, Sendable {
     }
 }
 
-struct FiresResponse: Codable, Sendable {
+nonisolated struct FiresResponse: Codable, Sendable {
     let count: Int
     let fires: [FirePoint]
     let firmsSource: String?
     let generatedAt: String?
 }
 
-struct NIFCFire: Codable, Identifiable, Sendable {
+nonisolated struct NIFCFire: Codable, Identifiable, Sendable {
     let name: String
     let latitude: Double
     let longitude: Double
@@ -55,7 +55,7 @@ struct NIFCFire: Codable, Identifiable, Sendable {
     }
 }
 
-struct NIFCResponse: Codable, Sendable {
+nonisolated struct NIFCResponse: Codable, Sendable {
     let count: Int
     let fires: [NIFCFire]
     let source: String?
