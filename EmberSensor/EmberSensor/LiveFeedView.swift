@@ -2,10 +2,18 @@ import SwiftUI
 import WebKit
 
 struct LiveFeedView: UIViewRepresentable {
-    let url = URL(string: "https://livecam.embersensor.com/reolink")!
+    let url = URL(string: "https://livecam.embersensor.com/yard-cam/")!
 
+    // Inline playback and autoplay are enabled so the video plays inside
+    // the tab instead of jumping to the full-screen player.
     func makeUIView(context: Context) -> WKWebView {
-        let webView = WKWebView()
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        config.mediaTypesRequiringUserActionForPlayback = []
+
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.isOpaque = false
+        webView.backgroundColor = .black
         webView.load(URLRequest(url: url))
         return webView
     }
