@@ -14,6 +14,9 @@ nonisolated struct MotorState: Codable, Sendable {
     let homed: Bool?
     let lastSeqAck: Int?
     let updatedAt: Double?
+    // Water pump running (automatic or manual). Nil on firmware that
+    // doesn't report it.
+    let pumpOn: Bool?
 }
 
 /// Body for POST /api/motor/command. Nil fields are left out of the JSON.
@@ -22,6 +25,7 @@ nonisolated private struct MotorCommand: Encodable, Sendable {
     var mode: String? = nil
     var speed: Int? = nil
     var deltaDeg: Int? = nil
+    var seconds: Int? = nil
 }
 
 nonisolated private struct CommandResponse: Decodable, Sendable {
@@ -192,8 +196,21 @@ final class AutoSuppressionModel {
         panSweepSpeed = 0
     }
 
+    /// Manual spray. The device runs the pump for up to `sprayRunSeconds`
+    /// and stops on its own, so a lost Stop can't leave the water on.
+    let sprayRunSeconds = 10
+
+    func startSpray() {
+        command(MotorCommand(kind: "pumpOn", seconds: sprayRunSeconds))
+    }
+
+    func stopSpray() {
+        command(MotorCommand(kind: "pumpOff"))
+    }
+
     /// Return to menu from any moving mode. Entering menu stops all three
-    /// motors and is the only mode where automatic detection runs.
+    /// motors and any spray, and is the only mode where automatic
+    /// detection runs.
     func stopAll() {
         guard speedActive else { return }
         command(MotorCommand(kind: "enterMode", mode: "menu"))
@@ -285,6 +302,7 @@ struct AutoSuppressionView: View {
                 LiveFeedView(url: streamURL)
                     .aspectRatio(16 / 9, contentMode: .fit)
                     .cornerRadius(12)
+                sprayCard
                 modeCard
                 if model.speedActive {
                     speedCard
@@ -373,6 +391,56 @@ struct AutoSuppressionView: View {
                 .bold()
                 .foregroundColor(color)
         }
+    }
+
+    private var sprayCard: some View {
+        let pumpOn = model.state?.pumpOn
+        let (label, color): (String, Color) = {
+            switch pumpOn {
+            case .some(true): return ("Spraying", .blue)
+            case .some(false): return ("Off", .secondary)
+            case .none: return ("Unknown", .secondary)
+            }
+        }()
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Water Spray")
+                    .font(.subheadline)
+                    .bold()
+                Spacer()
+                HStack(spacing: 6) {
+                    Image(systemName: pumpOn == true ? "drop.fill" : "drop")
+                        .foregroundColor(color)
+                    Text(label)
+                        .font(.caption)
+                        .bold()
+                        .foregroundColor(color)
+                }
+            }
+            HStack(spacing: 8) {
+                Button(action: model.startSpray) {
+                    Text("Start Spray")
+                        .bold()
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue.opacity(0.2))
+                        .foregroundColor(.blue)
+                        .cornerRadius(12)
+                }
+                InfoButton(text: "Turns on the water pump and sprays through the nozzle for up to \(model.sprayRunSeconds) seconds, then stops on its own. You can keep aiming while it sprays.")
+                Button(action: model.stopSpray) {
+                    Text("Stop Spray")
+                        .bold()
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.red.opacity(0.2))
+                        .foregroundColor(.red)
+                        .cornerRadius(12)
+                }
+                InfoButton(text: "Turns the water off right away.")
+            }
+        }
+        .cardStyle()
     }
 
     private var modeCard: some View {
@@ -522,7 +590,7 @@ struct AutoSuppressionView: View {
                         .foregroundColor(.red)
                         .cornerRadius(12)
                 }
-                InfoButton(text: "Stops all movement right away and hands control back to automatic fire detection.")
+                InfoButton(text: "Stops all movement and any water spray right away, and hands control back to automatic fire detection.")
             }
         }
         .cardStyle()
