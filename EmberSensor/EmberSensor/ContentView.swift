@@ -40,7 +40,7 @@ struct ContentView: View {
             .tag(2)
 
             NavigationStack {
-                LiveFeedView(api: api)
+                LiveFeedView()
                     .navigationTitle("Live Feed")
                     .navigationBarTitleDisplayMode(.inline)
             }
